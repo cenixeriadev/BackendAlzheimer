@@ -242,40 +242,6 @@ curl -X GET "http://localhost:8000/api/auth/me" \
   -H "Authorization: Bearer TOKEN"
 ```
 
-## 🏗️ Estructura del Proyecto
-
-```
-BackendAlzheimer/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # Punto de entrada de la aplicación
-│   ├── config.py            # Configuración y variables de entorno
-│   ├── database.py          # Configuración de la base de datos
-│   ├── dependencies.py      # Dependencias de autenticación
-│   ├── models/              # Modelos SQLAlchemy
-│   │   ├── __init__.py
-│   │   ├── usuario.py
-│   │   ├── paciente.py
-│   │   ├── cuidador.py
-│   │   ├── medico.py
-│   │   └── admin.py
-│   ├── schemas/             # Schemas Pydantic
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   └── usuario.py
-│   ├── routers/             # Endpoints
-│   │   ├── __init__.py
-│   │   └── auth.py
-│   └── utils/               # Utilidades
-│       ├── __init__.py
-│       └── security.py      # Funciones de seguridad (JWT, hash)
-├── .env                     # Variables de entorno (no incluir en git)
-├── .env.example             # Ejemplo de variables de entorno
-├── .gitignore
-├── requirements.txt
-├── run.py                   # Script para ejecutar el servidor
-└── README.md
-```
 
 ## 🔒 Seguridad
 
@@ -284,32 +250,3 @@ BackendAlzheimer/
 - Validación de datos con Pydantic
 - CORS configurado para orígenes específicos
 
-## 📦 Dependencias Principales
-
-- **FastAPI**: Framework web moderno
-- **Uvicorn**: Servidor ASGI
-- **SQLAlchemy**: ORM para PostgreSQL
-- **Pydantic**: Validación de datos
-- **python-jose**: Manejo de JWT
-- **passlib**: Hash de contraseñas
-- **psycopg2-binary**: Driver de PostgreSQL
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT.
-
-## 👨‍💻 Autor
-
-Tu nombre - Backend Alzheimer API
-
-## 📞 Soporte
-
-Para soporte, email: tu-email@example.com
