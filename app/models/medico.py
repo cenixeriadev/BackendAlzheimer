@@ -21,4 +21,4 @@ class Medico(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relaciones
-    usuario = relationship("Usuario", back_populates="medico")
+    usuario = relationship("Usuario", back_populates="medico", foreign_keys=[usuario_id])

@@ -25,7 +25,7 @@ class Usuario(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relaciones
-    paciente = relationship("Paciente", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
-    cuidador = relationship("Cuidador", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
-    medico = relationship("Medico", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
-    admin = relationship("Admin", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    paciente = relationship("Paciente", back_populates="usuario", uselist=False, foreign_keys="Paciente.usuario_id", cascade="all, delete-orphan")
+    cuidador = relationship("Cuidador", back_populates="usuario", foreign_keys="Cuidador.usuario_id", uselist=False, cascade="all, delete-orphan")
+    medico = relationship("Medico", back_populates="usuario", foreign_keys="Medico.usuario_id", uselist=False, cascade="all, delete-orphan")
+    admin = relationship("Admin", back_populates="usuario", foreign_keys="Admin.usuario_id", uselist=False, cascade="all, delete-orphan")

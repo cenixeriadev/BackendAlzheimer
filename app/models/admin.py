@@ -20,4 +20,4 @@ class Admin(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relaciones
-    usuario = relationship("Usuario", back_populates="admin")
+    usuario = relationship("Usuario", back_populates="admin" , foreign_keys=[usuario_id])
