@@ -1,0 +1,16 @@
+HOSTNAME
+dpg-d3ofmnfdiees73b8ko70-a
+PORT
+5432
+DATABASE
+alzhver1
+USERNAME
+alzhver1_user
+PASSWORD
+Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi
+INTERNAL DATABASE URL
+postgresql://alzhver1_user:Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi@dpg-d3ofmnfdiees73b8ko70-a/alzhver1
+EXTERNAL DATABASE URL
+postgresql://alzhver1_user:Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi@dpg-d3ofmnfdiees73b8ko70-a.oregon-postgres.render.com/alzhver1
+PSQL COMMAND
+PGPASSWORD=Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi psql -h dpg-d3ofmnfdiees73b8ko70-a.oregon-postgres.render.com -U alzhver1_user alzhver1

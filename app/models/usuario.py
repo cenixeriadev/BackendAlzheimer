@@ -29,3 +29,4 @@ class Usuario(Base):
     cuidador = relationship("Cuidador", back_populates="usuario", foreign_keys="Cuidador.usuario_id", uselist=False, cascade="all, delete-orphan")
     medico = relationship("Medico", back_populates="usuario", foreign_keys="Medico.usuario_id", uselist=False, cascade="all, delete-orphan")
     admin = relationship("Admin", back_populates="usuario", foreign_keys="Admin.usuario_id", uselist=False, cascade="all, delete-orphan")
+    diagnosticos = relationship("Diagnostico", back_populates="paciente")

@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import auth
 from app.database import engine, Base
-
+from app.routers import auth, diagnostico
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
 
@@ -18,7 +17,7 @@ origins = settings.ALLOWED_ORIGINS.split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # ⚠️ Solo para desarrollo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,7 +25,7 @@ app.add_middleware(
 
 # Incluir routers
 app.include_router(auth.router)
-
+app.include_router(diagnostico.router) 
 
 @app.get("/")
 async def root():
