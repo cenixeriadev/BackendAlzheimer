@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
 import uuid
 import os
 import io
@@ -16,25 +16,21 @@ router = APIRouter(prefix="/api/diagnosticos", tags=["Diagnósticos"])
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 @router.post("/analizar", response_model=AnalisisResponse)
 async def analizar_imagen(
     file: UploadFile = File(...),
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Analiza una imagen médica usando IA de Roboflow
-    """
     if current_user.tipo_usuario != "paciente":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo los pacientes pueden subir imágenes para diagnóstico"
         )
 
-    # DEBUG archivo
-    print(f"📁 Archivo recibido: {file.filename}")
-    print(f"📋 Content-Type: {file.content_type}")
+    # DEBUG 
+    print(f" Archivo recibido: {file.filename}")
+    print(f" Content-Type: {file.content_type}")
 
     filepath = None
     try:
@@ -46,20 +42,19 @@ async def analizar_imagen(
                 detail="El archivo está vacío"
             )
 
-        print(f"📊 Tamaño archivo: {len(contents)} bytes")
+        print(f"a Tamaño archivo: {len(contents)} bytes")
 
-        # Validar
+        # Validar imagen
         try:
             image = Image.open(io.BytesIO(contents))
-            print(f"🖼️ Formato detectado: {image.format}")
-            print(f"📐 Dimensiones: {image.size}")
+            print(f"b Formato detectado: {image.format}")
+            print(f"c Dimensiones: {image.size}")
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"El archivo no es una imagen válida: {str(e)}"
             )
 
-        # Convertir a RGB si es necesario
         if image.mode != 'RGB':
             image = image.convert('RGB')
 
@@ -68,46 +63,34 @@ async def analizar_imagen(
         filepath = os.path.join(UPLOAD_DIR, filename)
         image.save(filepath, 'JPEG', quality=90)
         
-        print(f"💾 Imagen guardada: {filepath}")
+        print(f"---Imagen guardada temporalmente: {filepath}")
 
-        #  Roboflow
         analisis_result = await roboflow_service.analyze_image(filepath)
 
-        # Guardar en base de datos
-        nuevo_diagnostico = Diagnostico(
-            paciente_id=current_user.id,
-            imagen_url=filename,
-            resultado_ia=analisis_result["resultado"],
-            confianza_ia=analisis_result["confianza_float"],
-            estado="pendiente"
-        )
-
-        db.add(nuevo_diagnostico)
-        db.commit()
-        db.refresh(nuevo_diagnostico)
-
-        print(f"✅ Diagnóstico guardado ID: {nuevo_diagnostico.id}")
+        print(f"Análisis completado")
 
         return AnalisisResponse(
             resultado=analisis_result["resultado"],
             confianza=analisis_result["confianza"],
             output_image=analisis_result.get("output_image"),
             dynamic_crop=analisis_result.get("dynamic_crop"),
-            diagnostico_id=nuevo_diagnostico.id
+            diagnostico_id=0,  # temporal
+            datos_roboflow=analisis_result.get("datos_roboflow")
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        # Limpiar en caso de error
         if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
-                print(f"🧹 Archivo temporal eliminado: {filepath}")
+                print(f"--. Archivo temporal eliminado: {filepath}")
             except:
                 pass
         
-        print(f"❌ Error general: {str(e)}")
+        print(f"e Error general: {str(e)}")
+        import traceback
+        print(f"c Traceback completo: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error procesando la imagen: {str(e)}"
@@ -115,7 +98,9 @@ async def analizar_imagen(
     finally:
         await file.close()
 
-# Los otros endpoints se mantienen igual
+
+#  RUTAS BD
+"""
 @router.get("/mis-diagnosticos", response_model=List[DiagnosticoResponse])
 async def obtener_mis_diagnosticos(
     current_user: Usuario = Depends(get_current_active_user),
@@ -142,3 +127,4 @@ async def obtener_diagnostico(
         raise HTTPException(status_code=403, detail="No tienes acceso a este diagnóstico")
     
     return diagnostico
+"""

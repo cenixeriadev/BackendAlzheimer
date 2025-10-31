@@ -1,3 +1,23 @@
+# BORRAR ANTES DE PRODUCCION
+
+# DATOS BD
+
+HOSTNAME = dpg-d3ofmnfdiees73b8ko70-a
+PORT = 5432
+DATABASE = alzhver1
+USERNAME = alzhver1_user
+PASSWORD = Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi
+INTERNAL DATABASE URL = postgresql://alzhver1_user:Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi@dpg-d3ofmnfdiees73b8ko70-a/Alzhver1
+EXTERNAL DATABASE URL = postgresql://alzhver1_user:Rf9ZiVs0i9XKxpekiIz5mbHpr0ioJmHi@dpg-d3ofmnfdiees73b8ko70-a.oregon-postgres.render.com/alzhver1
+
+# ACTIVAR MINIO
+
+.\minio.exe server D:\minio --console-address :9001
+
+# BORRAR ANTES DE PRODUCCION
+
+#
+
 # Backend Alzheimer API
 
 Backend desarrollado con FastAPI para la gestión de pacientes con Alzheimer, incluyendo autenticación JWT, gestión de usuarios (pacientes, cuidadores, médicos y admins) y base de datos PostgreSQL.
@@ -135,6 +155,7 @@ Respuesta:
 **GET** `/api/auth/me`
 
 Headers:
+
 ```
 Authorization: Bearer {token}
 ```
@@ -242,11 +263,9 @@ curl -X GET "http://localhost:8000/api/auth/me" \
   -H "Authorization: Bearer TOKEN"
 ```
 
-
 ## 🔒 Seguridad
 
 - Las contraseñas se hashean con bcrypt
 - Los tokens JWT expiran en 30 minutos (configurable)
 - Validación de datos con Pydantic
 - CORS configurado para orígenes específicos
-

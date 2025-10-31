@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 from app.routers import auth, diagnostico
-# Crear las tablas en la base de datos
+
+from app.services.storage_service import storage_service
+from app.services.roboflow_service import roboflow_service
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -17,13 +19,12 @@ origins = settings.ALLOWED_ORIGINS.split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ Solo para desarrollo
+    allow_origins=["*"],  # Solo para desarrollo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Incluir routers
 app.include_router(auth.router)
 app.include_router(diagnostico.router) 
 

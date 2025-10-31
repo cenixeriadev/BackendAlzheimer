@@ -24,7 +24,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
     
     Crea un usuario y su perfil específico según el tipo (paciente, cuidador, médico o admin).
     """
-    # Verificar si el usuario ya existe
     existing_user = db.query(Usuario).filter(Usuario.username == user_data.username).first()
     if existing_user:
         raise HTTPException(
@@ -32,7 +31,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
             detail="El nombre de usuario ya está registrado"
         )
     
-    # Validar email único si se proporciona
     if user_data.email:
         if user_data.tipo_usuario == "paciente":
             existing_email = db.query(Paciente).filter(Paciente.email == user_data.email).first()
@@ -49,7 +47,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
                 detail="El email ya está registrado"
             )
     
-    # Validaciones específicas por tipo de usuario
     if user_data.tipo_usuario == "paciente" and not user_data.fecha_nacimiento:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -242,7 +239,6 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
     
     Requiere un token JWT válido.
     """
-    # Obtener datos del perfil específico
     nombre = None
     apellido = None
     email = None
