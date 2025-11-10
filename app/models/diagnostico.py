@@ -14,6 +14,7 @@ class Diagnostico(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     paciente_id = Column(Integer, ForeignKey("usuario.id"), nullable=False)
+    cita_id = Column(Integer, ForeignKey("cita.id", ondelete="SET NULL"), nullable=True)
     imagen_url = Column(String(500), nullable=True)
     resultado_ia = Column(String(100), nullable=True)
     confianza_ia = Column(Float, nullable=True)
@@ -22,6 +23,7 @@ class Diagnostico(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     paciente = relationship("Usuario", back_populates="diagnosticos")
+    cita = relationship("Cita", back_populates="diagnosticos")
 
 '''
 me aburri y pa no lidiar con las 30 tablas de resultados agrege esta vaina a diagnostico ...
