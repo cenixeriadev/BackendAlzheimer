@@ -55,33 +55,33 @@ class StorageService:
                     self.s3_client.create_bucket(Bucket=self.bucket_name)
                 
                 print(f"Bucket '{self.bucket_name}' creado exitosamente")
-                self._setup_bucket_policy()
+                # self._setup_bucket_policy()
                 
             except ClientError as e:
                 print(f" Error creando bucket: {e}")
                 raise HTTPException(status_code=500, detail=f"Error configurando storage: {e}")
     
-    def _setup_bucket_policy(self):
-        """Configurar política del bucket para permitir acceso público de lectura"""
-        try:
-            policy = {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": "*",
-                        "Action": ["s3:GetObject"],
-                        "Resource": f"arn:aws:s3:::{self.bucket_name}/*"
-                    }
-                ]
-            }
-            self.s3_client.put_bucket_policy(
-                Bucket=self.bucket_name,
-                Policy=json.dumps(policy)  # ← Corregido
-            )
-            print("Política de bucket configurada")
-        except Exception as e:
-            print(f"No se pudo configurar la política del bucket: {e}")
+    # def _setup_bucket_policy(self):
+    #     """Configurar política del bucket para permitir acceso público de lectura"""
+    #     try:
+    #         policy = {
+    #             "Version": "2012-10-17",
+    #             "Statement": [
+    #                 {
+    #                     "Effect": "Allow",
+    #                     "Principal": "*",
+    #                     "Action": ["s3:GetObject"],
+    #                     "Resource": f"arn:aws:s3:::{self.bucket_name}/*"
+    #                 }
+    #             ]
+    #         }
+    #         self.s3_client.put_bucket_policy(
+    #             Bucket=self.bucket_name,
+    #             Policy=json.dumps(policy)  # ← Corregido
+    #         )
+    #         print("Política de bucket configurada")
+    #     except Exception as e:
+    #         print(f"No se pudo configurar la política del bucket: {e}")
 
     async def upload_file(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Dict[str, str]:
         """Subir archivo al storage"""
