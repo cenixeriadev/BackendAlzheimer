@@ -9,8 +9,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "*")
-
-    AWS_ENDPOINT_URL: str ="http://localhost:9000"
+    if os.getenv("ENVIROMENT")=="production":
+        AWS_ENDPOINT_URL: None
+    else:
+        AWS_ENDPOINT_URL: str ="http://localhost:9000"
     AWS_ACCESS_KEY_ID: str =os.getenv("AWS_ACCESS_KEY_ID", "minioadmin")
     AWS_SECRET_ACCESS_KEY: str =os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
     AWS_BUCKET_NAME: str =os.getenv("AWS_BUCKET_NAME", "alzheimer-images")
