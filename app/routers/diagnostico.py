@@ -111,14 +111,41 @@ async def obtener_historial_diagnosticos(
         Diagnostico.paciente_id == current_user.id
     ).order_by(Diagnostico.created_at.desc()).limit(50).all()
     
-    # Convertir a esquema Pydantic
-    diagnosticos_response = [DiagnosticoResponse.from_orm(diagnostico) for diagnostico in diagnosticos]
+    # Convertir a esquema Pydantic y agregar debug info
+    diagnosticos_data = []
+    for diagnostico in diagnosticos:
+        diagnostico_dict = {
+            "id": diagnostico.id,
+            "paciente_id": diagnostico.paciente_id,
+            "resultado": diagnostico.resultado,
+            "confianza": diagnostico.confianza,
+            "clase_original": diagnostico.clase_original,
+            "imagen_original_url": diagnostico.imagen_original_url,
+            "imagen_procesada_url": diagnostico.imagen_procesada_url,
+            "estado": diagnostico.estado,
+            "created_at": diagnostico.created_at,
+            # Debug info
+            "debug_info": {
+                "tiene_imagen_original": bool(diagnostico.imagen_original_url),
+                "url_length": len(diagnostico.imagen_original_url) if diagnostico.imagen_original_url else 0,
+                "url_preview": diagnostico.imagen_original_url[:100] + "..." if diagnostico.imagen_original_url and len(diagnostico.imagen_original_url) > 100 else diagnostico.imagen_original_url
+            }
+        }
+        diagnosticos_data.append(diagnostico_dict)
+    
+    print(f"🔍 Debug Historial - URLs encontradas:")
+    for d in diagnosticos_data:
+        print(f"   ID {d['id']}: {d['imagen_original_url']}")
     
     return {
-        "diagnosticos": diagnosticos_response,
-        "total": len(diagnosticos_response)
+        "diagnosticos": diagnosticos_data,
+        "total": len(diagnosticos_data),
+        "debug": {
+            "total_diagnosticos": len(diagnosticos_data),
+            "urls_con_imagen": sum(1 for d in diagnosticos_data if d['imagen_original_url']),
+            "ejemplo_url": diagnosticos_data[0]['imagen_original_url'] if diagnosticos_data else "No hay datos"
+        }
     }
-
 
 @router.get("/mis-diagnosticos", response_model=List[DiagnosticoResponse])
 async def obtener_mis_diagnosticos(
@@ -155,6 +182,17 @@ async def obtener_detalle_diagnostico(
     # Procesar datos de Roboflow para frontend
     datos_detallados = await _procesar_datos_roboflow(diagnostico.datos_roboflow)
     
+    # Debug info
+    debug_info = {
+        "url_accesible": bool(diagnostico.imagen_original_url),
+        "url_completa": diagnostico.imagen_original_url,
+        "storage_service": "S3/MinIO"
+    }
+    
+    print(f"🔍 Debug Detalle ID {diagnostico_id}:")
+    print(f"   URL: {diagnostico.imagen_original_url}")
+    print(f"   Tiene URL: {bool(diagnostico.imagen_original_url)}")
+    
     return {
         "id": diagnostico.id,
         "fecha_analisis": diagnostico.created_at,
@@ -164,7 +202,9 @@ async def obtener_detalle_diagnostico(
         "imagen_original_url": diagnostico.imagen_original_url,
         "imagen_procesada_url": diagnostico.imagen_procesada_url,
         "estado": diagnostico.estado,
-        "datos_detallados": datos_detallados
+        "datos_detallados": datos_detallados,
+        # Agregar debug info al response
+        "_debug": debug_info
     }
 
 @router.get("/{diagnostico_id}", response_model=DiagnosticoResponse)
@@ -187,6 +227,55 @@ async def obtener_diagnostico(
     
     return diagnostico
 
+# Endpoint específico para testear URLs de imágenes
+@router.get("/test-url/{diagnostico_id}")
+async def test_url_imagen(
+    diagnostico_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint específico para testear si la URL de la imagen es accesible
+    """
+    diagnostico = db.query(Diagnostico).filter(
+        Diagnostico.id == diagnostico_id,
+        Diagnostico.paciente_id == current_user.id
+    ).first()
+    
+    if not diagnostico:
+        raise HTTPException(status_code=404, detail="Diagnóstico no encontrado")
+    
+    if not diagnostico.imagen_original_url:
+        raise HTTPException(status_code=404, detail="No hay URL de imagen")
+    
+    # Probar si la URL es accesible
+    import requests
+    try:
+        print(f"🧪 Testeando URL: {diagnostico.imagen_original_url}")
+        response = requests.get(diagnostico.imagen_original_url, timeout=10)
+        
+        test_result = {
+            "url": diagnostico.imagen_original_url,
+            "status_code": response.status_code,
+            "content_type": response.headers.get('content-type'),
+            "content_length": len(response.content) if response.status_code == 200 else 0,
+            "accessible": response.status_code == 200,
+            "diagnostico_id": diagnostico_id
+        }
+        
+        print(f"✅ Test URL Result: {test_result}")
+        
+        return test_result
+        
+    except Exception as e:
+        error_result = {
+            "url": diagnostico.imagen_original_url,
+            "error": str(e),
+            "accessible": False,
+            "diagnostico_id": diagnostico_id
+        }
+        print(f"❌ Test URL Error: {error_result}")
+        return error_result
 # ========== FUNCIONES AUXILIARES ==========
 
 async def _guardar_diagnostico_completo(

@@ -10,13 +10,22 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "*")
 
-    AWS_ENDPOINT_URL: str ="http://localhost:9000"
-    AWS_ACCESS_KEY_ID: str =os.getenv("AWS_ACCESS_KEY_ID", "minioadmin")
-    AWS_SECRET_ACCESS_KEY: str =os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
-    AWS_BUCKET_NAME: str =os.getenv("AWS_BUCKET_NAME", "alzheimer-images")
+    # Configuración para AWS S3 / MinIO
+    AWS_ENDPOINT_URL: str = os.getenv("AWS_ENDPOINT_URL", "")  # Vacío para AWS real
+    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_BUCKET_NAME: str = os.getenv("AWS_BUCKET_NAME", "alzheimer-images")
+    AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
+    
+    # Nueva variable para detectar entorno
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    
+    # Propiedad computada para saber si es local
+    @property
+    def is_local_storage(self):
+        return bool(self.AWS_ENDPOINT_URL and "localhost" in self.AWS_ENDPOINT_URL)
 
     class Config:
         env_file = ".env"
-
 
 settings = Settings()

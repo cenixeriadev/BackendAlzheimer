@@ -9,46 +9,69 @@ from app.config import settings
 
 class StorageService:
     def __init__(self):
-        # Configuración simplificada
+        # Determinar si estamos en entorno local o AWS real
+        self.is_local = settings.is_local_storage
+        self.bucket_name = settings.AWS_BUCKET_NAME
+        
+        # Configuración base
         s3_config = {
             'aws_access_key_id': settings.AWS_ACCESS_KEY_ID,
             'aws_secret_access_key': settings.AWS_SECRET_ACCESS_KEY,
-            'config': boto3.session.Config(signature_version='s3v4')
+            'region_name': settings.AWS_REGION
         }
         
-        # Configuración para MinIO/LocalStack
-        if settings.AWS_ENDPOINT_URL:
-            s3_config['endpoint_url'] = settings.AWS_ENDPOINT_URL
-            if 'localhost' in settings.AWS_ENDPOINT_URL.lower() or '127.0.0.1' in settings.AWS_ENDPOINT_URL:
-                s3_config['verify'] = False
+        # Configuración específica para MinIO (local)
+        if self.is_local:
+            s3_config.update({
+                'endpoint_url': settings.AWS_ENDPOINT_URL,
+                'verify': False  # Solo para desarrollo local
+            })
+            print(f"🔄 Configurando conexión a MinIO local: {settings.AWS_ENDPOINT_URL}")
+        else:
+            print("🌐 Configurando conexión a AWS S3 real")
         
         self.s3_client = boto3.client('s3', **s3_config)
-        self.bucket_name = settings.AWS_BUCKET_NAME
-        self.is_local = bool(settings.AWS_ENDPOINT_URL)
         self.setup_bucket()
     
     def setup_bucket(self):
-        """Crear el bucket con política pública"""
+        """Crear el bucket si no existe (solo para entorno local)"""
         try:
             self.s3_client.head_bucket(Bucket=self.bucket_name)
             print(f"✅ Bucket '{self.bucket_name}' ya existe")
         except ClientError:
-            try:
-                # Crear bucket
-                self.s3_client.create_bucket(Bucket=self.bucket_name)
-                print(f"✅ Bucket '{self.bucket_name}' creado exitosamente")
-                
-                # Configurar política pública
-                self._make_bucket_public()
-                
-            except ClientError as e:
-                print(f"❌ Error creando bucket: {e}")
-                raise HTTPException(status_code=500, detail=f"Error configurando storage: {e}")
+            if self.is_local:
+                # Solo crear bucket en entorno local
+                try:
+                    if settings.AWS_REGION == 'us-east-1':
+                        self.s3_client.create_bucket(Bucket=self.bucket_name)
+                    else:
+                        self.s3_client.create_bucket(
+                            Bucket=self.bucket_name,
+                            CreateBucketConfiguration={'LocationConstraint': settings.AWS_REGION}
+                        )
+                    print(f"✅ Bucket '{self.bucket_name}' creado exitosamente en MinIO")
+                    
+                    # Configurar política pública solo para local
+                    self._make_bucket_public()
+                    
+                except ClientError as e:
+                    print(f"❌ Error creando bucket: {e}")
+                    raise HTTPException(status_code=500, detail=f"Error configurando storage: {e}")
+            else:
+                # En AWS real, el bucket debe existir previamente
+                print(f"❌ Bucket '{self.bucket_name}' no existe en AWS S3")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Bucket '{self.bucket_name}' no existe en AWS S3. Por favor crea el bucket primero."
+                )
     
     def _make_bucket_public(self):
-        """Hacer el bucket completamente público para lectura"""
+        """Hacer el bucket público solo en entorno local"""
+        if not self.is_local:
+            print("ℹ️  No se configura política pública en AWS S3 real por seguridad")
+            return
+            
         try:
-            # Política que permite acceso público completo a todos los objetos
             public_policy = {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -65,40 +88,42 @@ class StorageService:
                 Bucket=self.bucket_name,
                 Policy=str(public_policy).replace("'", '"')
             )
-            print("✅ Política pública configurada en el bucket")
+            print("✅ Política pública configurada en el bucket local")
             
         except Exception as e:
             print(f"⚠️ No se pudo configurar política pública: {e}")
 
     async def upload_file(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Dict[str, str]:
-        """Subir archivo con acceso público"""
+        """Subir archivo con configuración apropiada según el entorno"""
         try:
             # Generar nombre único
             file_extension = filename.split('.')[-1] if '.' in filename else 'jpg'
             unique_filename = f"diagnosticos/{uuid.uuid4()}.{file_extension}"
             
-            # Subir archivo con ACL pública
-            self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=unique_filename,
-                Body=file_content,
-                ContentType=content_type,
-                ACL='public-read'  # ¡Esto es clave!
-            )
+            # Configuración de subida según entorno
+            upload_params = {
+                'Bucket': self.bucket_name,
+                'Key': unique_filename,
+                'Body': file_content,
+                'ContentType': content_type,
+            }
             
-            # Generar URL pública
+            # Solo usar ACL pública en entorno local
             if self.is_local:
-                file_url = f"{settings.AWS_ENDPOINT_URL}/{self.bucket_name}/{unique_filename}"
-            else:
-                region = getattr(settings, 'AWS_REGION', 'us-east-1')
-                file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{unique_filename}"
+                upload_params['ACL'] = 'public-read'
+            
+            self.s3_client.put_object(**upload_params)
+            
+            # Generar URL según el entorno
+            file_url = await self.get_file_url(unique_filename)
             
             print(f"✅ Archivo subido: {file_url}")
             
             return {
                 "filename": unique_filename,
                 "url": file_url,
-                "message": "Archivo subido exitosamente"
+                "message": "Archivo subido exitosamente",
+                "environment": "local" if self.is_local else "aws"
             }
             
         except ClientError as e:
@@ -106,15 +131,12 @@ class StorageService:
             raise HTTPException(status_code=500, detail=f"Error subiendo archivo: {e}")
 
     async def upload_base64_image(self, base64_string: str, filename: str) -> Dict[str, str]:
-        """Subir imagen base64 con acceso público"""
+        """Subir imagen base64"""
         try:
-            # Decodificar base64
             if ',' in base64_string:
                 base64_string = base64_string.split(',')[1]
             
             file_content = base64.b64decode(base64_string)
-            
-            # Determinar content type
             content_type = self._get_content_type_from_base64(base64_string)
             
             return await self.upload_file(file_content, filename, content_type)
@@ -150,12 +172,13 @@ class StorageService:
             raise HTTPException(status_code=500, detail=f"Error eliminando archivo: {e}")
 
     async def get_file_url(self, filename: str) -> str:
-        """Obtener URL pública del archivo"""
+        """Obtener URL pública del archivo según el entorno"""
         if self.is_local:
+            # URL para MinIO local
             return f"{settings.AWS_ENDPOINT_URL}/{self.bucket_name}/{filename}"
         else:
-            region = getattr(settings, 'AWS_REGION', 'us-east-1')
-            return f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{filename}"
+            # URL para AWS S3 real
+            return f"https://{self.bucket_name}.s3.{settings.AWS_REGION}.amazonaws.com/{filename}"
 
 # Instancia global
 storage_service = StorageService()
