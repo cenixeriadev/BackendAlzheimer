@@ -3,7 +3,6 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-
 class Cuidador(Base):
     __tablename__ = "cuidador"
 
@@ -19,5 +18,8 @@ class Cuidador(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relaciones
-    usuario = relationship("Usuario", back_populates="cuidador" , foreign_keys=[usuario_id])
-    #pacientes = relationship("Paciente", back_populates="cuidador", foreign_keys="Paciente.cuidador_id", cascade="all, delete-orphan")
+    usuario = relationship(
+        "Usuario", 
+        back_populates="cuidador", 
+        foreign_keys=[usuario_id]  # Especificar la foreign key
+    )

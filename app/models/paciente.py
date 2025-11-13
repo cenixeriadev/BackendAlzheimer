@@ -4,11 +4,9 @@ from sqlalchemy.orm import relationship
 import enum
 from app.database import Base
 
-
 class EstadoAlzheimer(str, enum.Enum):
     independiente = "independiente"
     con_cuidador = "con_cuidador"
-
 
 class Paciente(Base):
     __tablename__ = "paciente"
@@ -30,6 +28,15 @@ class Paciente(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relaciones
-    usuario = relationship("Usuario", back_populates="paciente", foreign_keys=[usuario_id])
-    cuidador = relationship("Usuario", foreign_keys=[cuidador_id])
+    # Relaciones - ESPECIFICANDO EXPLÍCITAMENTE
+    usuario = relationship(
+        "Usuario", 
+        back_populates="paciente", 
+        foreign_keys=[usuario_id]  # Especificar la foreign key
+    )
+    
+    cuidador_rel = relationship(
+        "Usuario", 
+        foreign_keys=[cuidador_id],  # Especificar la foreign key
+        post_update=True
+    )

@@ -4,13 +4,11 @@ from sqlalchemy.orm import relationship
 import enum
 from app.database import Base
 
-
 class TipoUsuario(str, enum.Enum):
     paciente = "paciente"
     cuidador = "cuidador"
     medico = "medico"
     admin = "admin"
-
 
 class Usuario(Base):
     __tablename__ = "usuario"
@@ -24,9 +22,42 @@ class Usuario(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relaciones
-    paciente = relationship("Paciente", back_populates="usuario", uselist=False, foreign_keys="Paciente.usuario_id", cascade="all, delete-orphan")
-    cuidador = relationship("Cuidador", back_populates="usuario", foreign_keys="Cuidador.usuario_id", uselist=False, cascade="all, delete-orphan")
-    medico = relationship("Medico", back_populates="usuario", foreign_keys="Medico.usuario_id", uselist=False, cascade="all, delete-orphan")
-    admin = relationship("Admin", back_populates="usuario", foreign_keys="Admin.usuario_id", uselist=False, cascade="all, delete-orphan")
-    diagnosticos = relationship("Diagnostico", back_populates="paciente")
+    # Relaciones - ESPECIFICANDO EXPLÍCITAMENTE LAS FOREIGN KEYS
+    paciente = relationship(
+        "Paciente", 
+        back_populates="usuario", 
+        uselist=False, 
+        foreign_keys="Paciente.usuario_id",  # Especificar la foreign key
+        cascade="all, delete-orphan"
+    )
+    
+    cuidador = relationship(
+        "Cuidador", 
+        back_populates="usuario", 
+        uselist=False, 
+        foreign_keys="Cuidador.usuario_id",  # Especificar la foreign key
+        cascade="all, delete-orphan"
+    )
+    
+    medico = relationship(
+        "Medico", 
+        back_populates="usuario", 
+        uselist=False, 
+        foreign_keys="Medico.usuario_id",  # Especificar la foreign key
+        cascade="all, delete-orphan"
+    )
+    
+    admin = relationship(
+        "Admin", 
+        back_populates="usuario", 
+        uselist=False, 
+        foreign_keys="Admin.usuario_id",  # Especificar la foreign key
+        cascade="all, delete-orphan"
+    )
+    
+    # Relación con diagnósticos
+    diagnosticos = relationship(
+        "Diagnostico", 
+        back_populates="paciente",
+        foreign_keys="Diagnostico.paciente_id"  # Especificar la foreign key
+    )

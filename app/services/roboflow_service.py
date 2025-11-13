@@ -1,8 +1,9 @@
+import base64
 import os
 from inference_sdk import InferenceHTTPClient
 from fastapi import HTTPException
 import tempfile
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 
 class RoboflowService:
@@ -21,15 +22,21 @@ class RoboflowService:
         # testing borrable
         self.last_raw_response = None
 
+    # Modificar el método analyze_image en roboflow_service.py
+
     async def analyze_image(self, image_path: str) -> Dict[str, Any]:
         """
-        Analiza una imagen usando Roboflow - Versión con filtrado
+        Analiza una imagen usando Roboflow - Versión mejorada que extrae imagen de respuesta
         """
         try:
             print(f"--- Analizando imagen: {image_path}")
             
             if not os.path.exists(image_path):
                 raise HTTPException(status_code=400, detail="Archivo de imagen no encontrado")
+
+            # Leer imagen original para posible almacenamiento
+            with open(image_path, 'rb') as f:
+                original_image_data = f.read()
 
             # workflow de Roboflow
             result = self.client.run_workflow(
@@ -81,11 +88,17 @@ class RoboflowService:
 
             print(f"c Resultado final: {class_es} - Confianza: {confidence_percent:.2f}%")
 
+            # Extraer imagen procesada de Roboflow si existe
+            processed_image_data = await self._extract_processed_image(main_result)
+
             return {
                 "resultado": class_es,
                 "confianza": f"{confidence_percent:.2f}%",
                 "confianza_float": confidence_percent,
-                "clase_original": class_eng
+                "clase_original": class_eng,
+                "original_image_data": original_image_data,  # Para almacenar después
+                "processed_image_data": processed_image_data,  # Imagen procesada por Roboflow
+                "datos_roboflow": main_result  # Datos completos para guardar en BD
             }
 
         except HTTPException:
@@ -98,6 +111,59 @@ class RoboflowService:
                 status_code=500, 
                 detail=f"Error en servicio de IA: {str(e)}"
             )
+
+    async def _extract_processed_image(self, roboflow_response: dict) -> Optional[bytes]:
+        """
+        Extraer imagen procesada de la respuesta de Roboflow
+        """
+        try:
+            # Buscar imagen procesada en la respuesta (depende de la estructura de Roboflow)
+            # Esto puede variar según la configuración del workflow
+            if "image" in roboflow_response:
+                image_data = roboflow_response["image"]
+                if isinstance(image_data, str) and image_data.startswith("data:image"):
+                    # Es base64, decodificar
+                    base64_str = image_data.split(",")[1]
+                    return base64.b64decode(base64_str)
+            
+            # Buscar recursivamente imágenes base64
+            image_data = self._find_image_data_recursive(roboflow_response)
+            if image_data:
+                return image_data
+                
+            print("w No se encontró imagen procesada en la respuesta")
+            return None
+            
+        except Exception as e:
+            print(f"e Error extrayendo imagen procesada: {e}")
+            return None
+
+    def _find_image_data_recursive(self, obj, depth=0):
+        """Buscar recursivamente datos de imagen en base64"""
+        if depth > 5:
+            return None
+            
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if (isinstance(value, str) and 
+                    value.startswith("data:image") and 
+                    "base64" in value):
+                    try:
+                        base64_str = value.split(",")[1]
+                        return base64.b64decode(base64_str)
+                    except:
+                        pass
+                result = self._find_image_data_recursive(value, depth + 1)
+                if result:
+                    return result
+                    
+        elif isinstance(obj, list):
+            for item in obj:
+                result = self._find_image_data_recursive(item, depth + 1)
+                if result:
+                    return result
+                    
+        return None
 
     def _print_filtered_response(self, main_result: dict):
         """

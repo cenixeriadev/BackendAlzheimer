@@ -4,11 +4,9 @@ from sqlalchemy.orm import relationship
 import enum
 from app.database import Base
 
-
 class NivelAcceso(str, enum.Enum):
     total = "total"
     limitado = "limitado"
-
 
 class Admin(Base):
     __tablename__ = "admin"
@@ -20,4 +18,8 @@ class Admin(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relaciones
-    usuario = relationship("Usuario", back_populates="admin" , foreign_keys=[usuario_id])
+    usuario = relationship(
+        "Usuario", 
+        back_populates="admin", 
+        foreign_keys=[usuario_id]  # Especificar la foreign key
+    )

@@ -231,7 +231,6 @@ async def login_form(
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-
 @router.get("/me", response_model=UsuarioResponse)
 async def read_users_me(current_user: Usuario = Depends(get_current_active_user), db: Session = Depends(get_db)):
     """
@@ -244,21 +243,31 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
     email = None
     telefono = None
     
-    if current_user.tipo_usuario == "paciente" and current_user.paciente:
-        nombre = current_user.paciente.nombre
-        apellido = current_user.paciente.apellido
-        email = current_user.paciente.email
-        telefono = current_user.paciente.telefono
-    elif current_user.tipo_usuario == "cuidador" and current_user.cuidador:
-        nombre = current_user.cuidador.nombre
-        apellido = current_user.cuidador.apellido
-        email = current_user.cuidador.email
-        telefono = current_user.cuidador.telefono
-    elif current_user.tipo_usuario == "medico" and current_user.medico:
-        nombre = current_user.medico.nombre
-        apellido = current_user.medico.apellido
-        email = current_user.medico.email
-        telefono = current_user.medico.telefono
+    # Cargar las relaciones explícitamente si es necesario
+    if current_user.tipo_usuario == "paciente":
+        # Forzar la carga de la relación paciente
+        db.refresh(current_user, ["paciente"])
+        if current_user.paciente:
+            nombre = current_user.paciente.nombre
+            apellido = current_user.paciente.apellido
+            email = current_user.paciente.email
+            telefono = current_user.paciente.telefono
+            
+    elif current_user.tipo_usuario == "cuidador":
+        db.refresh(current_user, ["cuidador"])
+        if current_user.cuidador:
+            nombre = current_user.cuidador.nombre
+            apellido = current_user.cuidador.apellido
+            email = current_user.cuidador.email
+            telefono = current_user.cuidador.telefono
+            
+    elif current_user.tipo_usuario == "medico":
+        db.refresh(current_user, ["medico"])
+        if current_user.medico:
+            nombre = current_user.medico.nombre
+            apellido = current_user.medico.apellido
+            email = current_user.medico.email
+            telefono = current_user.medico.telefono
     
     return UsuarioResponse(
         id=current_user.id,
