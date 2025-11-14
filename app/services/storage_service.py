@@ -175,7 +175,17 @@ class StorageService:
             return f"{settings.AWS_ENDPOINT_URL}/{self.bucket_name}/{filename}"
         else:
             # URL para AWS S3 real
-            return f"https://{self.bucket_name}.s3.{settings.AWS_REGION}.amazonaws.com/{filename}"
+            #return f"https://{self.bucket_name}.s3.{settings.AWS_REGION}.amazonaws.com/{filename}"
+            try:
+                url = self.s3_client.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={'Bucket': self.bucket_name, 'Key': filename},
+                    ExpiresIn=7200
+                )            
+                #print(f"Generando URL firmada para {object_key}: {url}")
+                return url
+            except Exception as e:
+                raise Exception(f"No se pudo generar URL firmada: {e}")
 
 # Instancia global
 storage_service = StorageService()
