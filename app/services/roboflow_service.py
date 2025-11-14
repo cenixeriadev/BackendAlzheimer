@@ -2,9 +2,7 @@ import base64
 import os
 from inference_sdk import InferenceHTTPClient
 from fastapi import HTTPException
-import tempfile
 from typing import Dict, Any, Optional
-import json
 
 class RoboflowService:
     def __init__(self):
@@ -60,10 +58,8 @@ class RoboflowService:
 
             main_result = result[0]
             
-            # secciones específicas 
             self._print_filtered_response(main_result)
 
-            # clasificación
             classification_data = self._extract_classification_data(main_result)
             
             if not classification_data:
@@ -96,9 +92,9 @@ class RoboflowService:
                 "confianza": f"{confidence_percent:.2f}%",
                 "confianza_float": confidence_percent,
                 "clase_original": class_eng,
-                "original_image_data": original_image_data,  # Para almacenar después
-                "processed_image_data": processed_image_data,  # Imagen procesada por Roboflow
-                "datos_roboflow": main_result  # Datos completos para guardar en BD
+                "original_image_data": original_image_data,  
+                "processed_image_data": processed_image_data, 
+                "datos_roboflow": main_result  
             }
 
         except HTTPException:
@@ -117,16 +113,12 @@ class RoboflowService:
         Extraer imagen procesada de la respuesta de Roboflow
         """
         try:
-            # Buscar imagen procesada en la respuesta (depende de la estructura de Roboflow)
-            # Esto puede variar según la configuración del workflow
             if "image" in roboflow_response:
                 image_data = roboflow_response["image"]
                 if isinstance(image_data, str) and image_data.startswith("data:image"):
-                    # Es base64, decodificar
                     base64_str = image_data.split(",")[1]
                     return base64.b64decode(base64_str)
             
-            # Buscar recursivamente imágenes base64
             image_data = self._find_image_data_recursive(roboflow_response)
             if image_data:
                 return image_data
@@ -242,7 +234,7 @@ class RoboflowService:
                     print(f"c Datos extraídos de predictions: {prediction_data.get('class')} - {prediction_data.get('confidence')}")
                     return prediction_data
             
-            print("🔎 Buscando recursivamente datos de clasificación...")
+            print(" Buscando recursivamente datos de clasificación...")
             classification_data = self._find_classification_data_recursive(main_result)
             if classification_data:
                 return classification_data

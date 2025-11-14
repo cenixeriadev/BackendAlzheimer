@@ -1,8 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
-from app.database import Base
+from app.utils.database import Base
 
 class NivelAcceso(str, enum.Enum):
     total = "total"
@@ -17,9 +17,8 @@ class Admin(Base):
     permisos = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relaciones
     usuario = relationship(
         "Usuario", 
         back_populates="admin", 
-        foreign_keys=[usuario_id]  # Especificar la foreign key
+        foreign_keys=[usuario_id]
     )

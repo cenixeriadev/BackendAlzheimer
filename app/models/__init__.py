@@ -4,6 +4,7 @@ from app.models.cuidador import Cuidador
 from app.models.medico import Medico
 from app.models.admin import Admin
 from app.models.hospital import Hospital
+from app.models.asignacion_medico import AsignacionMedicoPaciente
 from app.models.diagnostico import Diagnostico
 
-__all__ = ["Usuario", "Paciente", "Cuidador", "Medico", "Admin", "Hospital", "Diagnostico"]
+__all__ = ["Usuario", "Paciente", "Cuidador", "Medico", "Admin", "Hospital", "Diagnostico", "AsignacionMedicoPaciente"]

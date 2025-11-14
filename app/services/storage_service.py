@@ -5,11 +5,10 @@ from botocore.exceptions import ClientError
 from fastapi import HTTPException
 import base64
 from typing import Dict
-from app.config import settings
+from app.utils.config import settings
 
 class StorageService:
     def __init__(self):
-        # Determinar si estamos en entorno local o AWS real
         self.is_local = settings.is_local_storage
         self.bucket_name = settings.AWS_BUCKET_NAME
         
@@ -20,11 +19,11 @@ class StorageService:
             'region_name': settings.AWS_REGION
         }
         
-        # Configuración específica para MinIO (local)
+        # Config MinIO
         if self.is_local:
             s3_config.update({
                 'endpoint_url': settings.AWS_ENDPOINT_URL,
-                'verify': False  # Solo para desarrollo local
+                'verify': False  
             })
             print(f"🔄 Configurando conexión a MinIO local: {settings.AWS_ENDPOINT_URL}")
         else:
@@ -37,10 +36,9 @@ class StorageService:
         """Crear el bucket si no existe (solo para entorno local)"""
         try:
             self.s3_client.head_bucket(Bucket=self.bucket_name)
-            print(f"✅ Bucket '{self.bucket_name}' ya existe")
+            print(f"Bucket '{self.bucket_name}' ya existe")
         except ClientError:
             if self.is_local:
-                # Solo crear bucket en entorno local
                 try:
                     if settings.AWS_REGION == 'us-east-1':
                         self.s3_client.create_bucket(Bucket=self.bucket_name)
@@ -49,17 +47,17 @@ class StorageService:
                             Bucket=self.bucket_name,
                             CreateBucketConfiguration={'LocationConstraint': settings.AWS_REGION}
                         )
-                    print(f"✅ Bucket '{self.bucket_name}' creado exitosamente en MinIO")
+                    print(f"Bucket '{self.bucket_name}' creado exitosamente en MinIO")
                     
                     # Configurar política pública solo para local
                     self._make_bucket_public()
                     
                 except ClientError as e:
-                    print(f"❌ Error creando bucket: {e}")
+                    print(f"Error creando bucket: {e}")
                     raise HTTPException(status_code=500, detail=f"Error configurando storage: {e}")
             else:
-                # En AWS real, el bucket debe existir previamente
-                print(f"❌ Bucket '{self.bucket_name}' no existe en AWS S3")
+                # AWS bucket existe
+                print(f"Bucket '{self.bucket_name}' no existe en AWS S3")
                 raise HTTPException(
                     status_code=500, 
                     detail=f"Bucket '{self.bucket_name}' no existe en AWS S3. Por favor crea el bucket primero."
@@ -68,7 +66,7 @@ class StorageService:
     def _make_bucket_public(self):
         """Hacer el bucket público solo en entorno local"""
         if not self.is_local:
-            print("ℹ️  No se configura política pública en AWS S3 real por seguridad")
+            print("No se configura política pública en AWS S3 real por seguridad")
             return
             
         try:
@@ -88,10 +86,10 @@ class StorageService:
                 Bucket=self.bucket_name,
                 Policy=str(public_policy).replace("'", '"')
             )
-            print("✅ Política pública configurada en el bucket local")
+            print("Política pública configurada en el bucket local")
             
         except Exception as e:
-            print(f"⚠️ No se pudo configurar política pública: {e}")
+            print(f" No se pudo configurar política pública: {e}")
 
     async def upload_file(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Dict[str, str]:
         """Subir archivo con configuración apropiada según el entorno"""
@@ -108,7 +106,6 @@ class StorageService:
                 'ContentType': content_type,
             }
             
-            # Solo usar ACL pública en entorno local
             if self.is_local:
                 upload_params['ACL'] = 'public-read'
             
@@ -117,7 +114,7 @@ class StorageService:
             # Generar URL según el entorno
             file_url = await self.get_file_url(unique_filename)
             
-            print(f"✅ Archivo subido: {file_url}")
+            print(f" Archivo subido: {file_url}")
             
             return {
                 "filename": unique_filename,
@@ -127,7 +124,7 @@ class StorageService:
             }
             
         except ClientError as e:
-            print(f"❌ Error subiendo archivo: {e}")
+            print(f" Error subiendo archivo: {e}")
             raise HTTPException(status_code=500, detail=f"Error subiendo archivo: {e}")
 
     async def upload_base64_image(self, base64_string: str, filename: str) -> Dict[str, str]:
@@ -142,7 +139,7 @@ class StorageService:
             return await self.upload_file(file_content, filename, content_type)
             
         except Exception as e:
-            print(f"❌ Error procesando imagen base64: {e}")
+            print(f" Error procesando imagen base64: {e}")
             raise HTTPException(status_code=500, detail=f"Error procesando imagen: {e}")
 
     def _get_content_type_from_base64(self, base64_string: str) -> str:
@@ -168,7 +165,7 @@ class StorageService:
             return {"message": f"Archivo {filename} eliminado exitosamente"}
             
         except ClientError as e:
-            print(f"❌ Error eliminando archivo: {e}")
+            print(f" Error eliminando archivo: {e}")
             raise HTTPException(status_code=500, detail=f"Error eliminando archivo: {e}")
 
     async def get_file_url(self, filename: str) -> str:

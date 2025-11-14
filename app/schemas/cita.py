@@ -11,7 +11,6 @@ class EstadoCita(str, Enum):
     reprogramada = "reprogramada"
 
 
-# Schema base para Cita
 class CitaBase(BaseModel):
     paciente_id: int = Field(..., gt=0, description="ID del paciente")
     medico_id: int = Field(..., gt=0, description="ID del médico")
@@ -28,12 +27,10 @@ class CitaBase(BaseModel):
         return v
 
 
-# Schema para crear una cita
 class CitaCreate(CitaBase):
     pass
 
 
-# Schema para actualizar una cita
 class CitaUpdate(BaseModel):
     fecha_hora: Optional[datetime] = None
     hospital_id: Optional[int] = Field(None, gt=0)
@@ -48,13 +45,11 @@ class CitaUpdate(BaseModel):
         return v
 
 
-# Schema para cambiar el estado de una cita
 class CitaCambiarEstado(BaseModel):
     estado: EstadoCita = Field(..., description="Nuevo estado de la cita")
     motivo_cambio: Optional[str] = Field(None, min_length=5, max_length=500, description="Motivo del cambio de estado")
 
 
-# Schema para la respuesta de cita (incluye datos relacionados)
 class CitaResponse(BaseModel):
     id: int
     paciente_id: int
@@ -67,7 +62,6 @@ class CitaResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    # Datos relacionados (opcional)
     paciente_nombre: Optional[str] = None
     paciente_apellido: Optional[str] = None
     medico_nombre: Optional[str] = None
@@ -78,7 +72,6 @@ class CitaResponse(BaseModel):
         from_attributes = True
 
 
-# Schema para listar citas con paginación
 class CitaListResponse(BaseModel):
     total: int
     page: int
@@ -87,14 +80,12 @@ class CitaListResponse(BaseModel):
     citas: List[CitaResponse]
 
 
-# Schema para consultar disponibilidad de médico
 class DisponibilidadQuery(BaseModel):
     medico_id: int = Field(..., gt=0)
     fecha: str = Field(..., pattern=r'^\d{4}-\d{2}-\d{2}$', description="Formato: YYYY-MM-DD")
     hospital_id: Optional[int] = Field(None, gt=0)
 
 
-# Schema para respuesta de disponibilidad
 class HorarioDisponible(BaseModel):
     hora_inicio: str
     hora_fin: str
@@ -107,7 +98,6 @@ class DisponibilidadResponse(BaseModel):
     horarios: List[HorarioDisponible]
 
 
-# Schema para filtros de búsqueda
 class CitaFiltros(BaseModel):
     paciente_id: Optional[int] = None
     medico_id: Optional[int] = None

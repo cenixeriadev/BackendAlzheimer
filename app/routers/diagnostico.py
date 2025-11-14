@@ -1,3 +1,4 @@
+import datetime
 from math import ceil
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.orm import Session
@@ -6,20 +7,20 @@ import uuid
 import os
 import io
 from PIL import Image
-from app.database import get_db
+from app.utils.database import get_db
+from app.models.paciente import Paciente
+from app.models.medico import Medico
 from app.models.diagnostico import Diagnostico
 from app.models.usuario import Usuario
 from app.schemas.diagnostico import DiagnosticoResponse, AnalisisResponse
 from app.services.roboflow_service import roboflow_service
 from app.services.storage_service import storage_service
-from app.dependencies import get_current_active_user
+from app.utils.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/api/diagnosticos", tags=["Diagnósticos"])
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# ========== RUTAS ESPECÍFICAS PRIMERO ==========
 
 @router.post("/analizar", response_model=AnalisisResponse)
 async def analizar_imagen(
@@ -64,7 +65,6 @@ async def analizar_imagen(
         # Analizar con Roboflow
         analisis_result = await roboflow_service.analyze_image(filepath)
 
-        # Guardar en storage y base de datos (sin imagen procesada)
         diagnostico_creado = await _guardar_diagnostico_completo(
             db=db,
             current_user=current_user,
@@ -90,7 +90,6 @@ async def analizar_imagen(
             detail=f"Error procesando la imagen: {str(e)}"
         )
     finally:
-        # Limpiar archivo temporal
         if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
@@ -111,7 +110,6 @@ async def obtener_historial_diagnosticos(
         Diagnostico.paciente_id == current_user.id
     ).order_by(Diagnostico.created_at.desc()).limit(50).all()
     
-    # Convertir a esquema Pydantic y agregar debug info
     diagnosticos_data = []
     for diagnostico in diagnosticos:
         diagnostico_dict = {
@@ -159,7 +157,6 @@ async def obtener_mis_diagnosticos(
         Diagnostico.paciente_id == current_user.id
     ).order_by(Diagnostico.created_at.desc()).all()
     
-    # Convertir a esquema Pydantic
     return [DiagnosticoResponse.from_orm(diagnostico) for diagnostico in diagnosticos]
 
 @router.get("/detalle/{diagnostico_id}", response_model=Dict[str, Any])
@@ -227,7 +224,6 @@ async def obtener_diagnostico(
     
     return diagnostico
 
-# Endpoint específico para testear URLs de imágenes
 @router.get("/test-url/{diagnostico_id}")
 async def test_url_imagen(
     diagnostico_id: int,
@@ -248,10 +244,9 @@ async def test_url_imagen(
     if not diagnostico.imagen_original_url:
         raise HTTPException(status_code=404, detail="No hay URL de imagen")
     
-    # Probar si la URL es accesible
     import requests
     try:
-        print(f"🧪 Testeando URL: {diagnostico.imagen_original_url}")
+        print(f" Testeando URL: {diagnostico.imagen_original_url}")
         response = requests.get(diagnostico.imagen_original_url, timeout=10)
         
         test_result = {
@@ -263,7 +258,7 @@ async def test_url_imagen(
             "diagnostico_id": diagnostico_id
         }
         
-        print(f"✅ Test URL Result: {test_result}")
+        print(f" Test URL Result: {test_result}")
         
         return test_result
         
@@ -274,35 +269,29 @@ async def test_url_imagen(
             "accessible": False,
             "diagnostico_id": diagnostico_id
         }
-        print(f"❌ Test URL Error: {error_result}")
+        print(f" Test URL Error: {error_result}")
         return error_result
-# ========== FUNCIONES AUXILIARES ==========
-
+    
 async def _guardar_diagnostico_completo(
     db: Session,
     current_user: Usuario,
     analisis_result: Dict[str, Any],
     original_filename: str
 ) -> Diagnostico:
-    """
-    Guardar diagnóstico completo SIN imagen procesada
-    """
     try:
-        # 1. Subir imagen original al storage
         original_upload = await storage_service.upload_file(
             file_content=analisis_result["original_image_data"],
             filename=f"original_{uuid.uuid4()}_{original_filename}",
             content_type="image/jpeg"
         )
 
-        # 2. Crear registro en base de datos SIN imagen procesada
         diagnostico = Diagnostico(
             paciente_id=current_user.id,
             resultado=analisis_result["resultado"],
             confianza=analisis_result["confianza_float"],
             clase_original=analisis_result["clase_original"],
             imagen_original_url=original_upload["url"],
-            imagen_procesada_url=None,  # No guardar imagen procesada
+            imagen_procesada_url=None,  
             datos_roboflow=analisis_result.get("datos_roboflow"),
             estado="completado"
         )
@@ -379,3 +368,145 @@ async def _procesar_datos_roboflow(datos_roboflow: Dict) -> Dict:
     except Exception as e:
         print(f"Error procesando datos Roboflow: {e}")
         return {"raw_data": datos_roboflow}
+    
+
+#  RUTAS PARA MEDICOS 
+
+@router.get("/medico/historial-pacientes", response_model=Dict[str, Any])
+async def obtener_historial_pacientes_asignados(
+    paciente_id: int = Query(None, description="Filtrar por paciente específico"),
+    fecha_desde: str = Query(None, description="Fecha desde (YYYY-MM-DD)"),
+    fecha_hasta: str = Query(None, description="Fecha hasta (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener historial de diagnósticos de pacientes asignados al médico
+    """
+    if current_user.tipo_usuario != "medico":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los médicos pueden acceder a esta información"
+        )
+
+    # Obtener el médico actual
+    medico = db.query(Medico).filter(Medico.usuario_id == current_user.id).first()
+    if not medico:
+        raise HTTPException(status_code=404, detail="Perfil de médico no encontrado")
+
+    # Obtener pacientes asignados
+    from app.models.asignacion_medico import AsignacionMedicoPaciente
+    asignaciones = db.query(AsignacionMedicoPaciente).filter(
+        AsignacionMedicoPaciente.medico_id == medico.id
+    ).all()
+
+    if not asignaciones:
+        return {
+            "diagnosticos": [],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": 0,
+                "total_pages": 0,
+                "has_next": False,
+                "has_prev": False
+            }
+        }
+
+    pacientes_ids = [asignacion.paciente_id for asignacion in asignaciones]
+    
+    # Obtener usuarios_id de los pacientes
+    pacientes_usuarios = db.query(Paciente).filter(Paciente.id.in_(pacientes_ids)).all()
+    usuarios_ids = [paciente.usuario_id for paciente in pacientes_usuarios]
+
+    # Construir query base
+    query = db.query(Diagnostico).filter(Diagnostico.paciente_id.in_(usuarios_ids))
+    
+    # Aplicar filtros adicionales
+    if paciente_id:
+        paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
+        if paciente and paciente.usuario_id in usuarios_ids:
+            query = query.filter(Diagnostico.paciente_id == paciente.usuario_id)
+    
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, "%Y-%m-%d")
+            query = query.filter(Diagnostico.created_at >= fecha_desde_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha_desde inválido")
+    
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, "%Y-%m-%d") + datetime.timedelta(days=1)
+            query = query.filter(Diagnostico.created_at < fecha_hasta_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha_hasta inválido")
+
+    # Calcular paginación
+    total = query.count()
+    total_pages = ceil(total / per_page) if total > 0 else 1
+    offset = (page - 1) * per_page
+
+    # Obtener diagnósticos
+    diagnosticos = query.order_by(Diagnostico.created_at.desc()).offset(offset).limit(per_page).all()
+
+    # Enriquecer con información
+    diagnosticos_enriquecidos = []
+    for diagnostico in diagnosticos:
+        paciente_info = await _obtener_info_paciente(db, diagnostico.paciente_id)
+        
+        diagnostico_data = {
+            "id": diagnostico.id,
+            "paciente_id": diagnostico.paciente_id,
+            "resultado": diagnostico.resultado,
+            "confianza": diagnostico.confianza,
+            "clase_original": diagnostico.clase_original,
+            "imagen_original_url": diagnostico.imagen_original_url,
+            "imagen_procesada_url": diagnostico.imagen_procesada_url,
+            "estado": diagnostico.estado,
+            "created_at": diagnostico.created_at,
+            "paciente_info": paciente_info
+        }
+        diagnosticos_enriquecidos.append(diagnostico_data)
+
+    return {
+        "diagnosticos": diagnosticos_enriquecidos,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
+        },
+        "total_pacientes_asignados": len(pacientes_ids)
+    }
+
+
+async def _obtener_info_paciente(db: Session, usuario_id: int) -> Dict[str, Any]:
+    """
+    Obtener información del paciente a partir del usuario_id
+    """
+    try:
+        paciente = db.query(Paciente).filter(Paciente.usuario_id == usuario_id).first()
+        if paciente:
+            return {
+                "id": paciente.id,
+                "nombre": paciente.nombre,
+                "apellido": paciente.apellido,
+                "email": paciente.email,
+                "telefono": paciente.telefono,
+                "edad": _calcular_edad(paciente.fecha_nacimiento),
+                "estado_alzheimer": paciente.estado_alzheimer
+            }
+        return {"error": "Paciente no encontrado"}
+    except Exception as e:
+        return {"error": f"Error obteniendo información: {str(e)}"}
+
+def _calcular_edad(fecha_nacimiento):
+    """Calcular edad a partir de fecha de nacimiento"""
+    from datetime import date
+    hoy = date.today()
+    return hoy.year - fecha_nacimiento.year - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))

@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
-from app.database import Base
+from app.utils.database import Base
 
 class EstadoAlzheimer(str, enum.Enum):
     independiente = "independiente"
@@ -28,15 +28,14 @@ class Paciente(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relaciones - ESPECIFICANDO EXPLÍCITAMENTE
     usuario = relationship(
         "Usuario", 
         back_populates="paciente", 
-        foreign_keys=[usuario_id]  # Especificar la foreign key
+        foreign_keys=[usuario_id] 
     )
     
     cuidador_rel = relationship(
         "Usuario", 
-        foreign_keys=[cuidador_id],  # Especificar la foreign key
+        foreign_keys=[cuidador_id],  
         post_update=True
     )

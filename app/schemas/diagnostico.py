@@ -14,8 +14,8 @@ class AnalisisResponse(BaseModel):
 class DiagnosticoResponse(BaseModel):
     id: int
     paciente_id: int
-    resultado: str  # Cambiado de resultado_ia
-    confianza: float  # Cambiado de confianza_ia
+    resultado: str  
+    confianza: float  
     clase_original: Optional[str] = None
     imagen_original_url: Optional[str] = None
     imagen_procesada_url: Optional[str] = None

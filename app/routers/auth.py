@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from app.database import get_db
+from app.utils.database import get_db
 from app.schemas.auth import Token, LoginRequest, RegisterRequest
 from app.schemas.usuario import UsuarioResponse
 from app.models.usuario import Usuario
@@ -11,19 +11,15 @@ from app.models.cuidador import Cuidador
 from app.models.medico import Medico
 from app.models.admin import Admin
 from app.utils.security import verify_password, get_password_hash, create_access_token
-from app.config import settings
-from app.dependencies import get_current_active_user
+from app.utils.config import settings
+from app.utils.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 
 
 @router.post("/register", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
-    """
-    Registra un nuevo usuario en el sistema.
-    
-    Crea un usuario y su perfil específico según el tipo (paciente, cuidador, médico o admin).
-    """
+
     existing_user = db.query(Usuario).filter(Usuario.username == user_data.username).first()
     if existing_user:
         raise HTTPException(
@@ -65,7 +61,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El CMP es requerido para médicos"
             )
-        # Verificar CMP único
         existing_cmp = db.query(Medico).filter(Medico.cmp == user_data.cmp).first()
         if existing_cmp:
             raise HTTPException(
@@ -73,7 +68,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
                 detail="El CMP ya está registrado"
             )
     
-    # Crear usuario
     hashed_password = get_password_hash(user_data.password)
     new_user = Usuario(
         username=user_data.username,
@@ -83,9 +77,8 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
     )
     
     db.add(new_user)
-    db.flush()  # Para obtener el ID del usuario
+    db.flush() 
     
-    # Crear perfil específico según tipo de usuario
     if user_data.tipo_usuario == "paciente":
         perfil = Paciente(
             usuario_id=new_user.id,
@@ -139,7 +132,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    # Preparar respuesta con datos del perfil
     response = UsuarioResponse(
         id=new_user.id,
         username=new_user.username,
@@ -158,12 +150,7 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Inicia sesión y devuelve un token JWT.
-    
-    Valida las credenciales del usuario y genera un token de acceso.
-    """
-    # Buscar usuario
+
     user = db.query(Usuario).filter(Usuario.username == login_data.username).first()
     
     if not user:

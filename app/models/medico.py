@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.utils.database import Base
 
 class Medico(Base):
     __tablename__ = "medico"
@@ -19,9 +19,8 @@ class Medico(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relaciones
     usuario = relationship(
         "Usuario", 
         back_populates="medico", 
-        foreign_keys=[usuario_id]  # Especificar la foreign key
+        foreign_keys=[usuario_id] 
     )
