@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from BackendAlzheimer.app.routers import admin, asignaciones, citas, medicos
+from app.routers import admin, asignaciones, citas, medicos
 from app.utils.config import settings
 from app.utils.database import engine, Base
 from app.routers import auth, diagnostico
