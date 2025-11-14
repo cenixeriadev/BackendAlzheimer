@@ -104,6 +104,7 @@ class StorageService:
                 'Key': unique_filename,
                 'Body': file_content,
                 'ContentType': content_type,
+                'ACL': 'public-read'
             }
             
             if self.is_local:
