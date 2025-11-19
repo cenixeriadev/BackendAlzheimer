@@ -6,7 +6,6 @@ from app.utils.database import Base
 
 class TipoUsuario(str, enum.Enum):
     paciente = "paciente"
-    cuidador = "cuidador"
     medico = "medico"
     admin = "admin"
 
@@ -27,14 +26,6 @@ class Usuario(Base):
         back_populates="usuario", 
         uselist=False, 
         foreign_keys="Paciente.usuario_id",  
-        cascade="all, delete-orphan"
-    )
-    
-    cuidador = relationship(
-        "Cuidador", 
-        back_populates="usuario", 
-        uselist=False, 
-        foreign_keys="Cuidador.usuario_id",  
         cascade="all, delete-orphan"
     )
     

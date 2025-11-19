@@ -21,7 +21,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6)
-    tipo_usuario: Literal["paciente", "cuidador", "medico", "admin"]
+    tipo_usuario: Literal["paciente", "medico", "admin"]
     
     # Datos específicos según tipo de usuario
     nombre: str = Field(..., min_length=2, max_length=100)
@@ -35,10 +35,7 @@ class RegisterRequest(BaseModel):
     numero_identidad: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
-    estado_alzheimer: Optional[Literal["independiente", "con_cuidador"]] = None
-    
-    # Campos específicos para Cuidador
-    relacion_paciente: Optional[str] = None
+    estado_alzheimer: Optional[Literal["independiente", "dependiente"]] = None
     
     # Campos específicos para Médico
     cmp: Optional[str] = None

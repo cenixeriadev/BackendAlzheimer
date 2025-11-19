@@ -5,7 +5,7 @@ from datetime import datetime
 
 class UsuarioBase(BaseModel):
     username: str
-    tipo_usuario: Literal["paciente", "cuidador", "medico", "admin"]
+    tipo_usuario: Literal["paciente", "medico", "admin"]
     foto_perfil_url: Optional[str] = None
     estado: bool = True
 

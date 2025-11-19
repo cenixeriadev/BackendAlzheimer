@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import admin, asignaciones, citas, medicos
+from app.routers import admin, asignaciones, citas, medicos, dashboard
 from app.utils.config import settings
 from app.utils.database import engine, Base
 from app.routers import auth, diagnostico
@@ -32,6 +32,7 @@ app.include_router(asignaciones.router)
 app.include_router(admin.router)
 app.include_router(citas.router)
 app.include_router(medicos.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/")

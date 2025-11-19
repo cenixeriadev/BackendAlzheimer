@@ -55,11 +55,6 @@ async def listar_usuarios(
             usuario_data.apellido = usuario.medico.apellido
             usuario_data.email = usuario.medico.email
             usuario_data.telefono = usuario.medico.telefono
-        elif usuario.tipo_usuario == "cuidador" and usuario.cuidador:
-            usuario_data.nombre = usuario.cuidador.nombre
-            usuario_data.apellido = usuario.cuidador.apellido
-            usuario_data.email = usuario.cuidador.email
-            usuario_data.telefono = usuario.cuidador.telefono
         
         usuarios_response.append(usuario_data)
     

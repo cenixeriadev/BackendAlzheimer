@@ -7,7 +7,6 @@ from app.schemas.auth import Token, LoginRequest, RegisterRequest
 from app.schemas.usuario import UsuarioResponse
 from app.models.usuario import Usuario
 from app.models.paciente import Paciente
-from app.models.cuidador import Cuidador
 from app.models.medico import Medico
 from app.models.admin import Admin
 from app.utils.security import verify_password, get_password_hash, create_access_token
@@ -30,8 +29,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
     if user_data.email:
         if user_data.tipo_usuario == "paciente":
             existing_email = db.query(Paciente).filter(Paciente.email == user_data.email).first()
-        elif user_data.tipo_usuario == "cuidador":
-            existing_email = db.query(Cuidador).filter(Cuidador.email == user_data.email).first()
         elif user_data.tipo_usuario == "medico":
             existing_email = db.query(Medico).filter(Medico.email == user_data.email).first()
         else:
@@ -47,12 +44,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La fecha de nacimiento es requerida para pacientes"
-        )
-    
-    if user_data.tipo_usuario == "cuidador" and not user_data.relacion_paciente:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La relación con el paciente es requerida para cuidadores"
         )
     
     if user_data.tipo_usuario == "medico":
@@ -92,18 +83,6 @@ async def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
             direccion=user_data.direccion,
             ciudad=user_data.ciudad,
             estado_alzheimer=user_data.estado_alzheimer
-        )
-        db.add(perfil)
-    
-    elif user_data.tipo_usuario == "cuidador":
-        perfil = Cuidador(
-            usuario_id=new_user.id,
-            nombre=user_data.nombre,
-            apellido=user_data.apellido,
-            relacion_paciente=user_data.relacion_paciente,
-            telefono=user_data.telefono,
-            email=user_data.email,
-            direccion=user_data.direccion
         )
         db.add(perfil)
     
@@ -239,14 +218,6 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
             apellido = current_user.paciente.apellido
             email = current_user.paciente.email
             telefono = current_user.paciente.telefono
-            
-    elif current_user.tipo_usuario == "cuidador":
-        db.refresh(current_user, ["cuidador"])
-        if current_user.cuidador:
-            nombre = current_user.cuidador.nombre
-            apellido = current_user.cuidador.apellido
-            email = current_user.cuidador.email
-            telefono = current_user.cuidador.telefono
             
     elif current_user.tipo_usuario == "medico":
         db.refresh(current_user, ["medico"])
