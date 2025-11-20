@@ -23,6 +23,11 @@ class UsuarioResponse(UsuarioBase):
     apellido: Optional[str] = None
     email: Optional[str] = None
     telefono: Optional[str] = None
+    
+    # IDs de perfil específico
+    paciente_id: Optional[int] = None
+    medico_id: Optional[int] = None
+    admin_id: Optional[int] = None
 
     class Config:
         from_attributes = True

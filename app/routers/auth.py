@@ -208,12 +208,16 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
     apellido = None
     email = None
     telefono = None
+    paciente_id = None
+    medico_id = None
+    admin_id = None
     
     # Cargar las relaciones explícitamente si es necesario
     if current_user.tipo_usuario == "paciente":
         # Forzar la carga de la relación paciente
         db.refresh(current_user, ["paciente"])
         if current_user.paciente:
+            paciente_id = current_user.paciente.id
             nombre = current_user.paciente.nombre
             apellido = current_user.paciente.apellido
             email = current_user.paciente.email
@@ -222,10 +226,16 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
     elif current_user.tipo_usuario == "medico":
         db.refresh(current_user, ["medico"])
         if current_user.medico:
+            medico_id = current_user.medico.id
             nombre = current_user.medico.nombre
             apellido = current_user.medico.apellido
             email = current_user.medico.email
             telefono = current_user.medico.telefono
+    
+    elif current_user.tipo_usuario == "admin":
+        db.refresh(current_user, ["admin"])
+        if current_user.admin:
+            admin_id = current_user.admin.id
     
     return UsuarioResponse(
         id=current_user.id,
@@ -237,5 +247,8 @@ async def read_users_me(current_user: Usuario = Depends(get_current_active_user)
         nombre=nombre,
         apellido=apellido,
         email=email,
-        telefono=telefono
+        telefono=telefono,
+        paciente_id=paciente_id,
+        medico_id=medico_id,
+        admin_id=admin_id
     )
